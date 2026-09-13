@@ -24,7 +24,7 @@ npm run deploy   # daftarin slash command /autosetup
 npm start
 ```
 
-env setup
+File .env setup
 ```
 # Token bot dari https://discord.com/developers/applications
 DISCORD_TOKEN=
