@@ -24,25 +24,6 @@ npm run deploy   # daftarin slash command /autosetup
 npm start
 ```
 
-File .env setup
-```
-# Token bot dari https://discord.com/developers/applications
-DISCORD_TOKEN=
-
-# Application ID (Client ID) dari halaman General Information bot kamu
-CLIENT_ID=
-
-# Opsional: isi Guild ID buat register command cuma di 1 server (instant, enak buat testing).
-# Kosongin kalau mau command global (bisa delay sampai ~1 jam nyebar ke semua server).
-GUILD_ID=
-
-# URL website autosetup yang udah di-deploy ke Vercel
-AUTOSETUP_WEB_URL=https://your-app.vercel.app
-
-# HARUS SAMA PERSIS dengan AUTOSETUP_BOT_SECRET di env website
-AUTOSETUP_BOT_SECRET=
-```
-
 `AUTOSETUP_BOT_SECRET` **harus sama persis** dengan yang diisi di env website (Vercel), karena endpoint token di website nolak request tanpa header secret yang cocok.
 
 Saran waktu development: isi `GUILD_ID` di `.env` biar command langsung muncul di 1 server tanpa nunggu propagasi global (~1 jam).

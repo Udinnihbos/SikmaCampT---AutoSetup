@@ -104,6 +104,10 @@ export async function execute(interaction) {
     `Channel dibuat: **${summary.channels}**`,
   ].filter(Boolean);
 
+  if (summary.notes?.length) {
+    resultLines.push("", `ℹ️ ${summary.notes.length} catatan:`, ...summary.notes.slice(0, 10).map((n) => `- ${n}`));
+  }
+
   if (summary.errors.length) {
     resultLines.push(
       "",
@@ -112,5 +116,8 @@ export async function execute(interaction) {
     );
   }
 
-  await interaction.editReply({ content: resultLines.join("\n"), embeds: [], components: [] });
+  // PENTING: pakai `confirmation`, bukan `interaction`, buat edit hasil akhir.
+  // Setelah confirmation.update() dipanggil, itu yang jadi pemilik pesan ini -
+  // pakai interaction.editReply() lagi di sini bakal kena error "Unknown Message".
+  await confirmation.editReply({ content: resultLines.join("\n"), embeds: [], components: [] });
 }
