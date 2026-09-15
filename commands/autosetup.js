@@ -20,10 +20,17 @@ export const data = new SlashCommandBuilder()
       .setName("wipe")
       .setDescription("Hapus semua channel yang ada sebelum bikin yang baru (DESTRUKTIF)")
       .setRequired(false)
-  )
-  .setDefaultMemberPermissions(PermissionFlagsBits.Administrator);
+  );
 
 export async function execute(interaction) {
+  const ownerIds = (process.env.OWNER_IDS || "").split(",").map((id) => id.trim()).filter(Boolean);
+  if (!ownerIds.includes(interaction.user.id)) {
+    return interaction.reply({
+      content: "Command ini cuma bisa dipakai sama owner bot.",
+      ephemeral: true,
+    });
+  }
+
   await interaction.deferReply({ ephemeral: true });
 
   const token = interaction.options.getString("token", true).trim();
@@ -90,12 +97,26 @@ export async function execute(interaction) {
     components: [],
   });
 
-  let wipedCount = 0;
-  if (wipe) {
-    wipedCount = await wipeChannels(interaction.guild);
+  // Update progress ke pesan ephemeral yang sama, tapi di-throttle biar gak spam Discord API
+  // sendiri (min jeda 4 detik antar update, dan sekalian jaga-jaga token udah expired).
+  let lastProgressUpdate = 0;
+  function throttledProgress(text) {
+    const now = Date.now();
+    if (now - lastProgressUpdate < 4000) return;
+    lastProgressUpdate = now;
+    confirmation.editReply({ content: text, embeds: [], components: [] }).catch(() => {});
   }
 
-  const summary = await buildGuild(interaction.guild, config);
+  let wipedCount = 0;
+  if (wipe) {
+    wipedCount = await wipeChannels(interaction.guild, (done, total) => {
+      throttledProgress(`🗑️ Menghapus channel lama... ${done}/${total}`);
+    });
+  }
+
+  const summary = await buildGuild(interaction.guild, config, (done, total, label) => {
+    throttledProgress(`⚙️ Membangun server... ${done}/${total} (${label})`);
+  });
 
   const resultLines = [
     wipe ? `Channel lama dihapus: **${wipedCount}**` : null,
@@ -117,7 +138,15 @@ export async function execute(interaction) {
   }
 
   // PENTING: pakai `confirmation`, bukan `interaction`, buat edit hasil akhir.
-  // Setelah confirmation.update() dipanggil, itu yang jadi pemilik pesan ini -
-  // pakai interaction.editReply() lagi di sini bakal kena error "Unknown Message".
-  await confirmation.editReply({ content: resultLines.join("\n"), embeds: [], components: [] });
+  // Kalau prosesnya lama (banyak channel/role) dan token interaksi (hidup 15 menit)
+  // keburu expired, fallback kirim hasil sebagai pesan biasa di channel biar gak hilang.
+  const resultContent = resultLines.join("\n");
+  try {
+    await confirmation.editReply({ content: resultContent, embeds: [], components: [] });
+  } catch (err) {
+    console.error("Gagal edit reply (kemungkinan token expired), fallback ke channel message:", err.message);
+    await interaction.channel
+      ?.send({ content: `${interaction.user}, hasil autosetup:\n${resultContent}` })
+      .catch(() => {});
+  }
 }
